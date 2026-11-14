@@ -29,4 +29,5 @@ Short notes for the thesis, appended as each task finishes. Chapter tags in brac
 - Agent Framework 1.28 API differs from older samples (AgentSession, AgentResponse, AsAIAgent): example of fast-moving AI tooling and why versions are pinned.
 - `docker compose up` runs app + SQL Server 2025 healthy; the same vector query on the container: 21.2 ms per top-5 over 5,000 vectors.
 - Lesson for chapter 3: pin container base images to exact versions; a floating `10.0` tag silently used a stale SDK and broke the build.
-- Still open: GitHub Models and Azure calls, PdfPig on real lectures (see `docs/spikes.md`).
+- GitHub Models, the planned development provider, turned out to be retired (2026-07-30); its endpoint answers every request, even with a fake token, with a plain `200 OK`. Decision D11: Azure OpenAI as the single hosted provider (`gpt-5.4-mini`, `text-embedding-3-small`/`-large`). Example for chapter 3 of why the provider is configuration, and why a startup check must parse a real model response.
+- Still open: the Azure call (S3) and PdfPig on real lectures (see `docs/spikes.md`).

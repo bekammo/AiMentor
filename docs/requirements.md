@@ -17,7 +17,7 @@ Scope of the thesis prototype: one university (GTU), Georgian-language courses a
 | Student | Enrolled in one or more courses | Ask questions about course content in Georgian, get cited answers, get hints on assignments, review past conversations |
 | Lecturer | Owns courses | Upload materials, enroll students, define assignments and their help policy, see what students ask and where answers fail |
 | Administrator | Operates the platform | Manage accounts and roles, choose AI provider and models, watch tokens, cost, latency and security events, set limits |
-| AI provider (external system) | GitHub Models, Azure OpenAI, or a local Ollama server | Generate chat completions and embeddings |
+| AI provider (external system) | Azure OpenAI (hosted), or an optional local Ollama server | Generate chat completions and embeddings |
 | Researcher (the author, in the experiment role) | Runs experiments from the CLI | Reproducible measurements for chapter 4 |
 
 ## 3. Functional requirements
@@ -132,7 +132,7 @@ Priority uses MoSCoW: **M** must, **S** should, **C** could. Story column maps t
 ## 5. Constraints
 
 - Platform: .NET 10 (LTS), Blazor Web App with Interactive Server rendering, EF Core 10, SQL Server 2025 `vector` type (decisions D1 to D3).
-- AI: Microsoft.Extensions.AI abstractions and Microsoft Agent Framework 1.28; providers GitHub Models (development), Azure OpenAI (Azure for Students credit), Ollama (optional local).
+- AI: Microsoft.Extensions.AI abstractions and Microsoft Agent Framework 1.28; provider Azure OpenAI for development, experiments and the demo (`gpt-5.4-mini`, `text-embedding-3-small`/`-large`), Ollama optional local (PLAN D11). GitHub Models, planned at first, was retired by GitHub on 2026-07-30.
 - Budget: free tiers and student credit only.
 - Time: about 250 hours over 13 weeks, single developer.
 - Materials are digital (text-based) PDF/DOCX/PPTX. Scanned documents are not supported.

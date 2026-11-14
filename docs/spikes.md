@@ -7,8 +7,8 @@ Spike code: `spike/AiMentor.Spike` (throwaway, not in the solution). Run `dotnet
 | # | Item | Result | Decision |
 |---|---|---|---|
 | S1 | `SqlVector<float>` + `EF.Functions.VectorDistance` on SQL Server 2025 | **Passed** on LocalDB (RTM-CU3) and on the Docker container (RTM-CU11), both Express | **Go** (D3, D8) |
-| S2 | Georgian chat + embeddings via GitHub Models | **Failed: service retired** on 2026-07-30 | **No-go.** Replace GitHub Models as the development provider (decision pending) |
-| S3 | Azure OpenAI v1 endpoint with the plain OpenAI client | **Not run**: needs an Azure OpenAI resource and key | Pending |
+| S2 | Georgian chat + embeddings via GitHub Models | **Failed: service retired** on 2026-07-30 | **No-go.** Replaced by Azure OpenAI (PLAN D11) |
+| S3 | Georgian chat + embeddings on the Azure OpenAI v1 endpoint (now the main provider test) | **Not run**: needs an Azure OpenAI resource, two deployments and a key | Pending; also confirms the student subscription has quota |
 | S4 | PdfPig on three real lecture PDFs (Unicode output) | **Not run**: needs the lecture PDFs in `spike/data/` | Pending |
 | S5 | Agent Framework 1.28 API names | **Passed** (offline, fake chat client) | **Go**, with the renamed APIs below |
 | S6 | M.E.AI 10.11 vs 11.0 | **Checked** by restoring both graphs | **Go on 10.11.0**; do not move to 11.0 |
@@ -48,27 +48,25 @@ Findings for the plan:
 
 What the spike saw: every request to `https://models.github.ai/inference/...` (embeddings, chat completions, catalog) returns `HTTP 200`, `Content-Type: text/plain`, body `OK`, **even with an invalid token**. DNS resolves to a GitHub address (140.82.112.21), TLS is valid and no proxy is involved, so this is GitHub's own stub. The OpenAI client then fails with `JsonReaderException: 'O' is an invalid start of a value`. Lesson for the provider wiring (P1-T2): a 200 status is not proof of a working provider; the startup check must parse a real response.
 
-Impact on the plan: D2-era references to "GitHub Models first" (PLAN section 0.2 Azure line, P1-T2, risk table, `docs/requirements.md` section 5, architecture diagram, `.env.example`) must move to the replacement provider once it is chosen. The code path does not change: the spike's `Remote(endpoint, key, chatModel, embedModel)` works for any OpenAI-compatible v1 endpoint, so the replacement is tested with `dotnet run -- azure` (S3) or a new command for another endpoint.
+Decision (2026-11-14): **Azure OpenAI is the single hosted provider** (PLAN D11). References to GitHub Models were removed from the plan, requirements, diagrams, `.env.example` and the spike (its `github` command is gone). The Georgian chat and embedding test moves to S3 unchanged, because the spike's `Remote(endpoint, key, chatModel, embedModel)` works for any OpenAI-compatible v1 endpoint.
 
-Original test design, kept for the replacement provider:
+## S3. Azure OpenAI v1 endpoint (main provider test)
 
-```bash
-GITHUB_TOKEN=<token with models:read> dotnet run -- github
-```
-
-It uses `new OpenAIClient(new ApiKeyCredential(token), new OpenAIClientOptions { Endpoint = new Uri("https://models.github.ai/inference") })`, embeds a Georgian question and three passages with `text-embedding-3-small` at `Dimensions = 1024`, prints cosine similarity, then streams a grounded Georgian answer through `AsAIAgent` and measures time to first token, Georgian letter share, `[1]` citation presence and the "not covered" path. Model names can be changed with `SPIKE_CHAT_MODEL` and `SPIKE_EMBED_MODEL`.
-
-What to record when it runs: does `dimensions: 1024` work through GitHub Models, is the relevant passage clearly ahead of the others (for example cosine gap above 0.1), is the answer in Georgian with a citation, and the rate-limit headers or errors seen.
-
-## S3. Azure OpenAI v1 endpoint
-
-Not run. Same code path as S2 with a different base URL, which is the point of the test:
+Not run yet. Command, from `spike/AiMentor.Spike`:
 
 ```bash
-AZURE_OPENAI_ENDPOINT=https://<resource>.openai.azure.com AZURE_OPENAI_API_KEY=<key> AZURE_OPENAI_CHAT=<deployment> AZURE_OPENAI_EMBED=<deployment> dotnet run -- azure
+AZURE_OPENAI_ENDPOINT=https://<resource>.openai.azure.com AZURE_OPENAI_API_KEY=<key> dotnet run -- azure
 ```
 
-If it passes, `Azure.AI.OpenAI` is not needed at all (section 0.2 recommendation confirmed). `OpenAI` 2.14.0 is what M.E.AI.OpenAI 10.11.0 brings in transitively; 2.15.0 exists but is not needed.
+Deployment names default to `gpt-5.4-mini` and `text-embedding-3-small`; override with `AZURE_OPENAI_CHAT` and `AZURE_OPENAI_EMBED` if the deployments are named differently. The code uses `new OpenAIClient(new ApiKeyCredential(key), new OpenAIClientOptions { Endpoint = new Uri(endpoint + "/openai/v1/") })` with no `api-version`, embeds a Georgian question and three passages at `Dimensions = 1024`, prints cosine similarity, then streams a grounded Georgian answer through `AsAIAgent` and records time to first token, token usage, Georgian letter share, `[1]` citation presence and the "not covered" path.
+
+What to record: does `dimensions: 1024` work; is the relevant passage clearly ahead of the others (cosine gap above about 0.1); is the answer Georgian with a citation; time to first token (`gpt-5.4-mini` is a reasoning model, so check latency and whether `Temperature` is rejected, which matters for P1-T7); the deployment's tokens-per-minute quota.
+
+Model choice, from the Microsoft Foundry retirement schedule (updated 2026-09-23): `gpt-5.4-mini` GA until 2027-09-21; `text-embedding-3-small` and `-3-large` GA until 2028-02-09; `gpt-4.1-mini` and `gpt-4o-mini` are already deprecated (retire 2027-04-14). https://learn.microsoft.com/en-us/azure/foundry/openai/concepts/model-retirement-schedule
+
+Quota risk: the Azure OpenAI quota page lists no batch quota for "Azure for Students, free trials", and Microsoft Q&A threads from June and July 2026 report student subscriptions unable to deploy GPT models (0 TPM or region policy blocks). If deployment fails, the fallback is a Pay-As-You-Go Azure subscription or the OpenAI API, same code. https://learn.microsoft.com/en-us/azure/foundry/openai/quotas-limits
+
+If S3 passes, `Azure.AI.OpenAI` is not needed at all (section 0.2 recommendation confirmed). `OpenAI` 2.14.0 is what M.E.AI.OpenAI 10.11.0 brings in transitively; 2.15.0 exists but is not needed.
 
 ## S4. PdfPig on real lecture PDFs
 

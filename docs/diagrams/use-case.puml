@@ -11,7 +11,7 @@ skinparam usecase {
 actor "Student" as Student
 actor "Lecturer" as Lecturer
 actor "Administrator" as Admin
-actor "AI provider\n(GitHub Models / Azure OpenAI / Ollama)" as AI <<system>>
+actor "AI provider\n(Azure OpenAI / Ollama)" as AI <<system>>
 
 rectangle "AI mentor platform" {
   usecase "Log in" as UC_Login

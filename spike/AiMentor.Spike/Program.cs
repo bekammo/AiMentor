@@ -3,8 +3,10 @@
 //   dotnet run -- agent              Agent Framework 1.28 with a fake IChatClient (offline)
 //   dotnet run -- tokens             Georgian token counts with o200k (offline)
 //   dotnet run -- vector             SqlVector<float> + VectorDistance     (env SPIKE_SQL)
-//   dotnet run -- github             Georgian chat + embeddings, GitHub Models (env GITHUB_TOKEN)
-//   dotnet run -- azure              Azure OpenAI v1 endpoint with the OpenAI client (env AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_CHAT, AZURE_OPENAI_EMBED)
+//   dotnet run -- azure              Georgian chat + embeddings on the Azure OpenAI v1 endpoint
+//                                    env AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY; optional AZURE_OPENAI_CHAT
+//                                    (default gpt-5.4-mini) and AZURE_OPENAI_EMBED (default text-embedding-3-small)
+//   (GitHub Models was retired on 2026-07-30; see docs/spikes.md S2)
 //   dotnet run -- pdf <dir>          PdfPig text extraction on real lecture PDFs
 using System.ClientModel;
 using System.Diagnostics;
@@ -25,16 +27,11 @@ return command switch
     "agent" => await Spike.Agent(),
     "tokens" => Spike.Tokens(),
     "vector" => await Spike.Vector(),
-    "github" => await Spike.Remote(
-        new Uri("https://models.github.ai/inference"),
-        Spike.Env("GITHUB_TOKEN"),
-        Environment.GetEnvironmentVariable("SPIKE_CHAT_MODEL") ?? "openai/gpt-4.1-mini",
-        Environment.GetEnvironmentVariable("SPIKE_EMBED_MODEL") ?? "openai/text-embedding-3-small"),
     "azure" => await Spike.Remote(
         new Uri(Spike.Env("AZURE_OPENAI_ENDPOINT").TrimEnd('/') + "/openai/v1/"),
         Spike.Env("AZURE_OPENAI_API_KEY"),
-        Spike.Env("AZURE_OPENAI_CHAT"),
-        Spike.Env("AZURE_OPENAI_EMBED")),
+        Environment.GetEnvironmentVariable("AZURE_OPENAI_CHAT") ?? "gpt-5.4-mini",
+        Environment.GetEnvironmentVariable("AZURE_OPENAI_EMBED") ?? "text-embedding-3-small"),
     "pdf" => Spike.Pdf(args.ElementAtOrDefault(1) ?? Path.Combine("..", "data")),
     _ => Spike.Help(),
 };
@@ -58,7 +55,7 @@ static class Spike
 
     public static int Help()
     {
-        Console.WriteLine("Commands: agent | tokens | vector | github | azure | pdf <dir>");
+        Console.WriteLine("Commands: agent | tokens | vector | azure | pdf <dir>");
         return 1;
     }
 

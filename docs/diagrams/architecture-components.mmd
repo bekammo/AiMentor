@@ -27,9 +27,8 @@ flowchart LR
 
     exp["<b>AiMentor.Experiments</b><br/>experiment runner<br/>disk cache, CSV output"]
 
-    subgraph ext["External AI providers"]
-        gh["GitHub Models<br/>chat + embeddings (dev)"]
-        aoai["Azure OpenAI<br/>v1 endpoint (experiments, demo)"]
+    subgraph ext["External AI provider"]
+        aoai["Azure OpenAI, /openai/v1/<br/>gpt-5.4-mini (chat)<br/>text-embedding-3-small / -large"]
     end
 
     student -- "HTTPS + SignalR" --> web
@@ -49,4 +48,4 @@ flowchart LR
     classDef external fill:#f8d7da,stroke:#b02a37,color:#58151c
     class web,infra,app,domain,exp layer
     class sql,files store
-    class gh,aoai,ollama external
+    class aoai,ollama external

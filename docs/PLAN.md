@@ -18,6 +18,7 @@ Thesis: "Development of an AI-mentor web platform supporting the learning proces
 | D8 | Every query selects explicit columns and never materializes `Chunk.Embedding` | EF Core 10 loads vector properties by default (EF 11 changed this), which would pull 4 KB per row |
 | D9 | Citation locator is a page for PDF, a slide for PPTX, and heading + approximate page for DOCX | DOCX files do not store page numbers; only `lastRenderedPageBreak` hints exist |
 | D10 | "Open source page": PDF opens in the browser viewer at `#page=N`; PPTX/DOCX show the stored extracted text of that slide/section | Rendering Office files needs LibreOffice in the image, which is out of scope (stretch) |
+| D11 | **Azure OpenAI is the single hosted provider** for development, experiments and the demo, called through the plain OpenAI client on the `/openai/v1/` endpoint. Chat: `gpt-5.4-mini`; embeddings: `text-embedding-3-small` and `-3-large`. Ollama stays the optional local arm | GitHub Models, the original development provider, was retired on 2026-07-30 (spike S2). One provider for everything keeps results comparable. `gpt-5.4-mini` is GA until 2027-09-21; `gpt-4.1-mini` is already deprecated. Fallback if the student subscription has no quota: a Pay-As-You-Go Azure subscription or the OpenAI API, same client and code path |
 
 ### 0.2 Packages, checked on NuGet on 2026-11-14
 
@@ -29,7 +30,7 @@ Thesis: "Development of an AI-mentor web platform supporting the learning proces
 | Microsoft.Agents.AI, Microsoft.Agents.AI.OpenAI | **1.28.0** | Stable (GA), but released at a fast cadence (1.28.0 on 2026-11-06). Pin the exact version; API names must be read from the 1.28 docs, not older samples |
 | Microsoft.Extensions.AI, .OpenAI | **10.11.0** | Latest stable is 11.0.0, which supports net10.0 but pulls `Microsoft.Extensions.*` 11.0.0 abstractions. 10.11.0 is the minimum Agents.AI 1.28.0 needs and keeps the whole graph on 10.x. Revisit in P0-T6 |
 | Microsoft.Extensions.AI.Evaluation, .Quality, .Reporting | **10.11.0** | Stable. Same family version as above |
-| Azure.AI.OpenAI | avoid, or 2.1.0 | Everything after 2.1.0 is **beta** (2.9.0-beta.1). Preferred: plain OpenAI client against the Azure OpenAI v1 endpoint, so GitHub Models and Azure share one code path. Confirm in P0-T6 |
+| Azure.AI.OpenAI | avoid, or 2.1.0 | Everything after 2.1.0 is **beta** (2.9.0-beta.1). Preferred: plain OpenAI client against the Azure OpenAI v1 endpoint (`https://<resource>.openai.azure.com/openai/v1/`, no `api-version`), so Azure and any fallback OpenAI-compatible endpoint share one code path. Confirm in P0-T6 |
 | OllamaSharp | 5.5.2 | Implements `IChatClient` / `IEmbeddingGenerator`. `Microsoft.Extensions.AI.Ollama` is deprecated |
 | PdfPig | 0.1.16 | Stable label but **pre-1.0** (0.x). 0.1.17 builds are alpha nightlies; do not use |
 | DocumentFormat.OpenXml | 3.5.1 | Stable |
@@ -78,7 +79,7 @@ AiMentor/
 |---|---|---|
 | `AiMentor.Domain` | Entities, enums, value objects, the help-policy engine and hint-ladder rules. Pure C#, no packages | nothing |
 | `AiMentor.Application` | Use cases: ingestion, chunking, retrieval, chat orchestration, intent classification, guards, citation parsing, analytics queries. Interfaces for extractors, storage, course access, clock. Uses M.E.AI abstractions and Microsoft.Agents.AI | Domain |
-| `AiMentor.Infrastructure` | EF Core `DbContext`, migrations, Identity stores, PdfPig/OpenXml extractors, file storage, provider factory (GitHub Models / Azure OpenAI / Ollama), telemetry chat-client wrapper, background ingestion worker | Application |
+| `AiMentor.Infrastructure` | EF Core `DbContext`, migrations, Identity stores, PdfPig/OpenXml extractors, file storage, provider factory (Azure OpenAI / Ollama, D11), telemetry chat-client wrapper, background ingestion worker | Application |
 | `AiMentor.Web` | Blazor Web App, minimal API endpoints, auth policies, rate limiting, Georgian localization, composition root | Infrastructure |
 | `AiMentor.UnitTests` | Domain and Application logic with fakes | Domain, Application |
 | `AiMentor.IntegrationTests` | `WebApplicationFactory` + SQL Server 2025 in Testcontainers, fake AI clients | Web |
@@ -223,14 +224,14 @@ Definition of done for every coding task, in addition to its own: builds with wa
 | P0-T3 | Literature scan | RAG, Socratic tutoring and AI tutors, multilingual/Georgian embeddings, OWASP Top 10 for LLM Applications; 15 to 20 annotated sources | 5 | none | `docs/thesis-notes/ch1-sources.md` with one paragraph per source | Ch1 |
 | P0-T4 | First diagrams | Use Case, draft ER model, component architecture | 3 | P0-T1 | three sources under `docs/diagrams/` that render | Ch2 |
 | P0-T5 | Repository and solution skeleton | git, solution and projects from section 1, central package management with pinned versions, analyzers, `.editorconfig`, compose file with SQL Server 2025, CI stub | 4 | none | `dotnet build` and `docker compose up` succeed; CI runs build | Ch3 |
-| P0-T6 | Technical spike | Throwaway script: `SqlVector<float>` + `VectorDistance` on the 2025 container; Georgian chat and embedding call via GitHub Models; Azure v1 endpoint with the OpenAI client; PdfPig on three real lecture PDFs (check Unicode output); Agent Framework 1.28 API names; M.E.AI 10.11 vs 11.0 | 3 | P0-T5 | `docs/spikes.md` with findings and a go/no-go per item in section 0 | Ch2, Ch3 |
+| P0-T6 | Technical spike | Throwaway script: `SqlVector<float>` + `VectorDistance` on the 2025 container; Georgian chat and embedding call via GitHub Models (retired, see D11) replaced by the Azure v1 endpoint with the OpenAI client; PdfPig on three real lecture PDFs (check Unicode output); Agent Framework 1.28 API names; M.E.AI 10.11 vs 11.0 | 3 | P0-T5 | `docs/spikes.md` with findings and a go/no-go per item in section 0 | Ch2, Ch3 |
 
 ### Phase 1: Walking skeleton (31 h). Demo: one seeded course, upload a PDF, ask in Georgian, get an answer with material + page citations (no login yet)
 
 | ID | Task | Description | h | Depends | Deliverable / done when | Thesis |
 |---|---|---|---|---|---|---|
 | P1-T1 | Domain and persistence core | `Course`, `Material`, `MaterialPage`, `IndexProfile`, `Chunk` with `vector(1024)`; `DbContext`; first migration; seed one course | 4 | P0-T6 | migration applies to the container; round-trip test stores and reads a vector | Ch2, Ch3 |
-| P1-T2 | Provider wiring | Options-bound registration of `IChatClient` and `IEmbeddingGenerator` chosen by configuration (GitHub Models first); options validation at startup; User Secrets | 4 | P0-T6 | changing one config value switches provider; missing key fails fast with a clear message | Ch3 |
+| P1-T2 | Provider wiring | Options-bound registration of `IChatClient` and `IEmbeddingGenerator` chosen by configuration (Azure OpenAI first, D11); options validation at startup, including one real call whose response must parse; User Secrets | 4 | P0-T6 | changing one config value switches provider; missing key or a non-model response fails fast with a clear message | Ch3 |
 | P1-T3 | PDF extraction | PdfPig extractor returning text per page; NFC normalization, de-hyphenation, whitespace cleanup; fixture PDFs in Georgian | 3 | P1-T1 | unit tests assert page count and known Georgian phrases per page | Ch3 |
 | P1-T4 | Token-based chunker | Sentence-aware chunks of configurable token size and overlap, tracking `PageFrom`/`PageTo` | 4 | P1-T3 | unit tests: size bounds, overlap, page spans, no text lost | Ch3 |
 | P1-T5 | Ingestion pipeline | extract, chunk, batch-embed, store; status transitions; idempotent on content hash | 4 | P1-T2, P1-T4 | integration test ingests a fixture PDF with a fake embedder | Ch3 |
@@ -392,7 +393,8 @@ Targets: at least 70% line coverage on Domain + Application; no method with a Ma
 | Georgian tokenizes into many tokens per word, so 300/600-token chunks hold little text and cost more | high / medium | Report chunk sizes in tokens and in words; add a larger size only if results demand it; note it as a finding |
 | Small or local models write poor Georgian | high / medium | Use a strong hosted model for generation; the local model is an optional comparison, not a dependency |
 | PDF text comes out garbled despite being digital (font maps) | low / high | P0-T6 checks real files first; fallback is asking for DOCX/PPTX originals; OCR is out of scope |
-| GitHub Models free-tier limits block development or experiments | high / medium | Fake clients in tests; disk cache for every model call; heavy experiment runs on Azure OpenAI |
+| Azure for Students gives no or very low OpenAI quota (reports from 2026 show 0 to about 1K tokens per minute; no batch quota for student offers) | medium / high | Checked first in P0-T6; fallback is a Pay-As-You-Go Azure subscription or the OpenAI API with the same client (D11); fake clients in tests; disk cache for every model call |
+| Hosted model retired mid-project (GitHub Models already was) | medium / medium | Use GA models whose retirement date is after the defense (D11); provider and model are configuration only |
 | Azure for Students credit runs out | low / medium | Cheapest adequate models; per-user and daily budgets; cost dashboard from P5; experiments are cached |
 | Agent Framework and M.E.AI change quickly | medium / medium | Exact version pins in `Directory.Packages.props`; no upgrades after P1 unless a bug forces it; Agent Framework kept behind one orchestrator class |
 | LLM judge is unreliable on Georgian text | medium / medium | 10 answers hand-scored and compared with the judge (P6-T6); every jailbreak response reviewed manually |
