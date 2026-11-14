@@ -7,7 +7,7 @@ Spike code: `spike/AiMentor.Spike` (throwaway, not in the solution). Run `dotnet
 | # | Item | Result | Decision |
 |---|---|---|---|
 | S1 | `SqlVector<float>` + `EF.Functions.VectorDistance` on SQL Server 2025 | **Passed** on LocalDB (RTM-CU3) and on the Docker container (RTM-CU11), both Express | **Go** (D3, D8) |
-| S2 | Georgian chat + embeddings via GitHub Models | **Not run**: needs a GitHub token with Models access | Pending |
+| S2 | Georgian chat + embeddings via GitHub Models | **Failed: service retired** on 2026-07-30 | **No-go.** Replace GitHub Models as the development provider (decision pending) |
 | S3 | Azure OpenAI v1 endpoint with the plain OpenAI client | **Not run**: needs an Azure OpenAI resource and key | Pending |
 | S4 | PdfPig on three real lecture PDFs (Unicode output) | **Not run**: needs the lecture PDFs in `spike/data/` | Pending |
 | S5 | Agent Framework 1.28 API names | **Passed** (offline, fake chat client) | **Go**, with the renamed APIs below |
@@ -44,7 +44,13 @@ Findings for the plan:
 
 ## S2. GitHub Models (Georgian chat and embeddings)
 
-Not run. The spike command is ready:
+**Result (2026-11-14): no-go. GitHub Models no longer exists.** GitHub retired the service on 2026-07-30 (closed to new customers 2026-06-16, brownouts in July). The GitHub docs state that the playground, model catalog, inference API and bring-your-own-key are no longer available to any customer: https://docs.github.com/en/github-models
+
+What the spike saw: every request to `https://models.github.ai/inference/...` (embeddings, chat completions, catalog) returns `HTTP 200`, `Content-Type: text/plain`, body `OK`, **even with an invalid token**. DNS resolves to a GitHub address (140.82.112.21), TLS is valid and no proxy is involved, so this is GitHub's own stub. The OpenAI client then fails with `JsonReaderException: 'O' is an invalid start of a value`. Lesson for the provider wiring (P1-T2): a 200 status is not proof of a working provider; the startup check must parse a real response.
+
+Impact on the plan: D2-era references to "GitHub Models first" (PLAN section 0.2 Azure line, P1-T2, risk table, `docs/requirements.md` section 5, architecture diagram, `.env.example`) must move to the replacement provider once it is chosen. The code path does not change: the spike's `Remote(endpoint, key, chatModel, embedModel)` works for any OpenAI-compatible v1 endpoint, so the replacement is tested with `dotnet run -- azure` (S3) or a new command for another endpoint.
+
+Original test design, kept for the replacement provider:
 
 ```bash
 GITHUB_TOKEN=<token with models:read> dotnet run -- github
