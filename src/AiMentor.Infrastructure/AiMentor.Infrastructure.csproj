@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\AiMentor.Application\AiMentor.Application.csproj" />
+  </ItemGroup>
+</Project>

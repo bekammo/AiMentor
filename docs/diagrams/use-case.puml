@@ -1,0 +1,87 @@
+@startuml use-case
+' UML Use Case diagram (P0-T4). Labels in English; Georgian versions go into the thesis figure.
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+skinparam usecase {
+  BackgroundColor #F8F9FA
+  BorderColor #495057
+}
+
+actor "Student" as Student
+actor "Lecturer" as Lecturer
+actor "Administrator" as Admin
+actor "AI provider\n(GitHub Models / Azure OpenAI / Ollama)" as AI <<system>>
+
+rectangle "AI mentor platform" {
+  usecase "Log in" as UC_Login
+  usecase "Change password" as UC_Pwd
+
+  package "Learning" {
+    usecase "Ask a question\n(Learn mode)" as UC_Ask
+    usecase "Get cited answer" as UC_Cited
+    usecase "Open cited source" as UC_Source
+    usecase "Work on assignment\n(Assignment mode)" as UC_Assign
+    usecase "Get hint (ladder 1-3)" as UC_Hint
+    usecase "View conversation history" as UC_History
+    usecase "Rate an answer" as UC_Rate
+  }
+
+  package "Teaching" {
+    usecase "Manage courses" as UC_Course
+    usecase "Enroll students" as UC_Enroll
+    usecase "Upload materials" as UC_Upload
+    usecase "Review ingestion status" as UC_Status
+    usecase "Manage assignments\nand help policy" as UC_ManageAssign
+    usecase "View analytics\n(topics, unanswered, low-rated)" as UC_Analytics
+  }
+
+  package "Operations" {
+    usecase "Manage users and roles" as UC_Users
+    usecase "Configure AI provider,\nmodels and limits" as UC_AiSettings
+    usecase "Monitor usage, cost\nand security events" as UC_Usage
+  }
+
+  usecase "Check course access" as UC_Access
+  usecase "Apply help policy" as UC_Policy
+  usecase "Retrieve course chunks" as UC_Retrieve
+  usecase "Index material\n(extract, chunk, embed)" as UC_Index
+}
+
+Student --> UC_Login
+Lecturer --> UC_Login
+Admin --> UC_Login
+Student --> UC_Pwd
+Lecturer --> UC_Pwd
+
+Student --> UC_Ask
+Student --> UC_Assign
+Student --> UC_History
+Student --> UC_Rate
+Student --> UC_Source
+
+UC_Ask ..> UC_Access : <<include>>
+UC_Ask ..> UC_Policy : <<include>>
+UC_Ask ..> UC_Retrieve : <<include>>
+UC_Cited ..> UC_Ask : <<extend>>
+UC_Assign ..> UC_Policy : <<include>>
+UC_Hint ..> UC_Assign : <<extend>>
+UC_Source ..> UC_Access : <<include>>
+
+Lecturer --> UC_Course
+Lecturer --> UC_Enroll
+Lecturer --> UC_Upload
+Lecturer --> UC_Status
+Lecturer --> UC_ManageAssign
+Lecturer --> UC_Analytics
+UC_Upload ..> UC_Index : <<include>>
+
+Admin --> UC_Users
+Admin --> UC_AiSettings
+Admin --> UC_Usage
+Admin --> UC_Course
+
+UC_Retrieve --> AI
+UC_Index --> AI
+UC_Cited --> AI
+@enduml

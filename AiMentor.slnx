@@ -1,0 +1,16 @@
+<Solution>
+  <Folder Name="/experiments/">
+    <Project Path="experiments/AiMentor.Experiments/AiMentor.Experiments.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/AiMentor.Application/AiMentor.Application.csproj" />
+    <Project Path="src/AiMentor.Domain/AiMentor.Domain.csproj" />
+    <Project Path="src/AiMentor.Infrastructure/AiMentor.Infrastructure.csproj" />
+    <Project Path="src/AiMentor.Web/AiMentor.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AiMentor.Evaluation/AiMentor.Evaluation.csproj" />
+    <Project Path="tests/AiMentor.IntegrationTests/AiMentor.IntegrationTests.csproj" />
+    <Project Path="tests/AiMentor.UnitTests/AiMentor.UnitTests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,15 @@
+bin/
+obj/
+.vs/
+.idea/
+*.user
+*.suo
+TestResults/
+coverage*/
+*.coverage
+.env
+# Course materials are copyrighted and never committed
+data/
+# LLM / embedding response cache
+experiments/cache/
+spike/data/

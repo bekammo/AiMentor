@@ -1,0 +1,210 @@
+---
+title: AiMentor ER model (draft, P0-T4; final in P8-T2)
+---
+erDiagram
+    AspNetUsers {
+        string Id PK
+        string Email
+        string DisplayName
+        bool IsActive
+        datetime CreatedAt
+    }
+    AspNetRoles {
+        string Id PK
+        string Name "Admin | Lecturer | Student"
+    }
+    AspNetUserRoles {
+        string UserId PK, FK
+        string RoleId PK, FK
+    }
+    Courses {
+        int Id PK
+        string Code UK
+        string Title
+        string Description
+        string OwnerLecturerId FK
+        bool IsArchived
+        datetime CreatedAt
+    }
+    Enrollments {
+        int CourseId PK, FK
+        string StudentId PK, FK
+        datetime EnrolledAt
+    }
+    Materials {
+        int Id PK
+        int CourseId FK
+        string Title
+        int LectureNumber
+        string OriginalFileName
+        string FileType "Pdf | Docx | Pptx"
+        string StoragePath
+        string ContentHash "SHA-256, unique per course"
+        long SizeBytes
+        string Status "Pending | Processing | Ready | Failed"
+        string Error
+        int PageCount
+        string UploadedById FK
+        datetime UploadedAt
+    }
+    MaterialPages {
+        int Id PK
+        int MaterialId FK
+        int PageNumber
+        string Heading
+        string Text
+    }
+    IndexProfiles {
+        int Id PK
+        string EmbeddingProvider
+        string EmbeddingModel
+        int Dimensions
+        int ChunkSizeTokens
+        int OverlapTokens
+        bool IsActive
+        datetime CreatedAt
+    }
+    Chunks {
+        long Id PK
+        int MaterialId FK
+        int CourseId FK "denormalized for filtering"
+        int IndexProfileId FK
+        int Ordinal
+        string Text
+        int TokenCount
+        int PageFrom
+        int PageTo
+        string SectionHeading
+        bool IsFlagged
+        vector Embedding "vector(1024)"
+    }
+    Assignments {
+        int Id PK
+        int CourseId FK
+        string Title
+        string TaskText
+        int HelpPolicy "1 FullHelp | 2 HintsOnly | 3 NoHelp"
+        datetime OpensAt
+        datetime DueAt
+        bool IsActive
+        vector TaskEmbedding "vector(1024)"
+        string CreatedById FK
+    }
+    Conversations {
+        int Id PK
+        int CourseId FK
+        string StudentId FK
+        guid PseudonymId
+        string Mode "Learn | Assignment"
+        int AssignmentId FK "nullable"
+        string Title
+        datetime CreatedAt
+        datetime LastMessageAt
+    }
+    Messages {
+        long Id PK
+        int ConversationId FK
+        string Role
+        string Content
+        datetime CreatedAt
+        string Intent
+        string TopicLabel
+        int MatchedAssignmentId FK "nullable"
+        string AppliedPolicy
+        int HintLevel
+        string Outcome "Answered | NotCovered | Refused | Blocked"
+    }
+    MessageCitations {
+        long Id PK
+        long MessageId FK
+        int Ordinal "the [n] marker"
+        long ChunkId FK "nullable after delete"
+        int MaterialId FK
+        int PageNumber
+        float Score
+    }
+    MessageFeedback {
+        long MessageId PK, FK
+        string StudentId FK
+        int Rating "+1 | -1"
+        string Comment
+        datetime CreatedAt
+    }
+    AssignmentHintProgress {
+        string StudentId PK, FK
+        int AssignmentId PK, FK
+        int HintLevel "1 to 3"
+        datetime UpdatedAt
+    }
+    LlmCallLogs {
+        long Id PK
+        datetime Timestamp
+        string UserId FK
+        int CourseId FK
+        int ConversationId FK
+        long MessageId FK
+        string Purpose "Chat | Intent | Guard | Rewrite | Embedding | Eval"
+        string Provider
+        string Model
+        int InputTokens
+        int OutputTokens
+        int LatencyMs
+        int TimeToFirstTokenMs
+        decimal CostUsd
+        bool Success
+        string ErrorCode
+    }
+    AiSettings {
+        int Id PK "single row"
+        string ActiveChatProvider
+        string ActiveChatModel
+        int ActiveIndexProfileId FK
+        float Temperature
+        int MaxOutputTokens
+        int TopK
+        float MinSimilarity
+        int DailyTokenBudgetPerUser
+        string UpdatedById FK
+        datetime UpdatedAt
+    }
+    ModelPrices {
+        int Id PK
+        string Provider
+        string Model
+        decimal InputPer1MUsd
+        decimal OutputPer1MUsd
+        datetime EffectiveFrom
+    }
+    SecurityEvents {
+        long Id PK
+        datetime Timestamp
+        string UserId FK
+        int ConversationId FK
+        string Type "InjectionSuspected | SolutionLeakBlocked | RateLimited | CrossCourseDenied | FlaggedChunk"
+        string Details
+    }
+
+    AspNetUsers ||--o{ AspNetUserRoles : has
+    AspNetRoles ||--o{ AspNetUserRoles : grants
+    AspNetUsers ||--o{ Courses : owns
+    Courses ||--o{ Enrollments : has
+    AspNetUsers ||--o{ Enrollments : "enrolled as student"
+    Courses ||--o{ Materials : contains
+    Materials ||--o{ MaterialPages : "split into"
+    Materials ||--o{ Chunks : "chunked into"
+    IndexProfiles ||--o{ Chunks : "embedded with"
+    Courses ||--o{ Assignments : defines
+    Courses ||--o{ Conversations : scopes
+    AspNetUsers ||--o{ Conversations : starts
+    Assignments |o--o{ Conversations : "selected in"
+    Conversations ||--o{ Messages : contains
+    Assignments |o--o{ Messages : "matched by"
+    Messages ||--o{ MessageCitations : cites
+    Chunks |o--o{ MessageCitations : "cited as"
+    Materials ||--o{ MessageCitations : "cited from"
+    Messages ||--o| MessageFeedback : "rated by"
+    AspNetUsers ||--o{ AssignmentHintProgress : tracks
+    Assignments ||--o{ AssignmentHintProgress : "ladder for"
+    AspNetUsers |o--o{ LlmCallLogs : "billed to"
+    IndexProfiles |o--o| AiSettings : "active profile"
+    AspNetUsers |o--o{ SecurityEvents : triggers

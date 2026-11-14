@@ -1,0 +1,52 @@
+---
+title: AiMentor component architecture (C4 container level, P0-T4)
+---
+flowchart LR
+    student(["Student<br/>browser"])
+    lecturer(["Lecturer<br/>browser"])
+    admin(["Admin<br/>browser"])
+    researcher(["Researcher<br/>CLI"])
+
+    subgraph host["Docker host (docker compose)"]
+        direction LR
+        subgraph webc["Container: aimentor-web (.NET 10)"]
+            direction TB
+            web["<b>AiMentor.Web</b><br/>Blazor Web App, Interactive Server<br/>Identity pages (static SSR)<br/>Minimal API: files, SSE chat, CSV, health<br/>Auth policies, rate limiter, ka-GE"]
+            infra["<b>AiMentor.Infrastructure</b><br/>EF Core DbContext + migrations<br/>Identity stores<br/>PdfPig / OpenXml extractors<br/>File storage, ingestion worker<br/>Provider factory, telemetry client"]
+            app["<b>AiMentor.Application</b><br/>Ingestion, chunking, retrieval<br/>Chat orchestration (Agent Framework)<br/>Intent classifier, guards, citations<br/>Analytics queries"]
+            domain["<b>AiMentor.Domain</b><br/>Entities, enums<br/>Help-policy engine<br/>Hint-ladder rules"]
+            web --> infra
+            web --> app
+            infra --> app
+            app --> domain
+        end
+        sql[("<b>SQL Server 2025</b><br/>Relational tables<br/>Chunks.Embedding vector(1024)<br/>VECTOR_DISTANCE cosine")]
+        files[("Volume: materials<br/>original uploads")]
+        ollama["Ollama (optional profile)<br/>bge-m3, local chat model"]
+    end
+
+    exp["<b>AiMentor.Experiments</b><br/>experiment runner<br/>disk cache, CSV output"]
+
+    subgraph ext["External AI providers"]
+        gh["GitHub Models<br/>chat + embeddings (dev)"]
+        aoai["Azure OpenAI<br/>v1 endpoint (experiments, demo)"]
+    end
+
+    student -- "HTTPS + SignalR" --> web
+    lecturer -- "HTTPS + SignalR" --> web
+    admin -- "HTTPS + SignalR" --> web
+    researcher --> exp
+
+    infra -- "EF Core / SqlClient" --> sql
+    infra -- "read/write" --> files
+    infra -- "IChatClient / IEmbeddingGenerator<br/>(OpenAI client, HTTPS)" --> ext
+    infra -. "OllamaSharp" .-> ollama
+
+    exp -- "references Application<br/>+ Infrastructure" --> infra
+
+    classDef layer fill:#e7f1ff,stroke:#0b5ed7,color:#052c65
+    classDef store fill:#fff3cd,stroke:#997404,color:#332701
+    classDef external fill:#f8d7da,stroke:#b02a37,color:#58151c
+    class web,infra,app,domain,exp layer
+    class sql,files store
+    class gh,aoai,ollama external

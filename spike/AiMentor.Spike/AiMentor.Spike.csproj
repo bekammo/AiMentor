@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Throwaway spike (P0-T6). Not part of AiMentor.slnx. Findings go to docs/spikes.md. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+    <UserSecretsId>aimentor-spike-6f1c2a0e</UserSecretsId>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <PackageReference Include="Microsoft.Agents.AI" />
+    <PackageReference Include="Microsoft.Agents.AI.OpenAI" />
+    <PackageReference Include="Microsoft.Extensions.AI" />
+    <PackageReference Include="Microsoft.Extensions.AI.OpenAI" />
+    <PackageReference Include="PdfPig" />
+    <PackageReference Include="Microsoft.ML.Tokenizers" />
+    <PackageReference Include="Microsoft.ML.Tokenizers.Data.O200kBase" />
+  </ItemGroup>
+</Project>

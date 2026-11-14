@@ -1,0 +1,5 @@
+# Local development overrides (applied automatically by `docker compose up`).
+services:
+  web:
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development

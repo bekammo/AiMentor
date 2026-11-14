@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\AiMentor.Application\AiMentor.Application.csproj" />
+    <ProjectReference Include="..\..\src\AiMentor.Infrastructure\AiMentor.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
