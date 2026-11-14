@@ -27,4 +27,6 @@ Short notes for the thesis, appended as each task finishes. Chapter tags in brac
 - Numbers for chapter 3: exact cosine top-5 over 5,000 vectors of 1024 dimensions in SQL Server 2025 Express: 11.6 ms average (laptop, LocalDB). Supports the decision not to use an approximate vector index.
 - Georgian costs about 2.0x the tokens of English per word with the o200k tokenizer (2.50 vs 1.23 tokens per word): a 300-token chunk is about 120 Georgian words.
 - Agent Framework 1.28 API differs from older samples (AgentSession, AgentResponse, AsAIAgent): example of fast-moving AI tooling and why versions are pinned.
-- Still open: GitHub Models and Azure calls, PdfPig on real lectures, `docker compose up` (see `docs/spikes.md`).
+- `docker compose up` runs app + SQL Server 2025 healthy; the same vector query on the container: 21.2 ms per top-5 over 5,000 vectors.
+- Lesson for chapter 3: pin container base images to exact versions; a floating `10.0` tag silently used a stale SDK and broke the build.
+- Still open: GitHub Models and Azure calls, PdfPig on real lectures (see `docs/spikes.md`).

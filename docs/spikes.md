@@ -6,7 +6,7 @@ Spike code: `spike/AiMentor.Spike` (throwaway, not in the solution). Run `dotnet
 
 | # | Item | Result | Decision |
 |---|---|---|---|
-| S1 | `SqlVector<float>` + `EF.Functions.VectorDistance` on SQL Server 2025 | **Passed** on SQL Server 2025 RTM-CU3 Express (LocalDB) | **Go** (D3, D8). Re-run on the Docker container once Docker works |
+| S1 | `SqlVector<float>` + `EF.Functions.VectorDistance` on SQL Server 2025 | **Passed** on LocalDB (RTM-CU3) and on the Docker container (RTM-CU11), both Express | **Go** (D3, D8) |
 | S2 | Georgian chat + embeddings via GitHub Models | **Not run**: needs a GitHub token with Models access | Pending |
 | S3 | Azure OpenAI v1 endpoint with the plain OpenAI client | **Not run**: needs an Azure OpenAI resource and key | Pending |
 | S4 | PdfPig on three real lecture PDFs (Unicode output) | **Not run**: needs the lecture PDFs in `spike/data/` | Pending |
@@ -14,7 +14,7 @@ Spike code: `spike/AiMentor.Spike` (throwaway, not in the solution). Run `dotnet
 | S6 | M.E.AI 10.11 vs 11.0 | **Checked** by restoring both graphs | **Go on 10.11.0**; do not move to 11.0 |
 | S7 | Unverified versions from section 0.2 (Markdig, coverlet, SQL Server tag, `MSSQL_PID=Express`) | Versions resolved; Express confirmed to support `vector` | **Go**, with a test-stack change (see S7) |
 | S8 | Georgian token cost (risk table) | **Measured** with o200k | Confirms the risk; report chunk sizes in tokens and words |
-| S9 | `docker compose up` (P0-T5 done-when) | **Not run**: Docker Desktop fails to start on this machine | Pending; compose file validated with `docker compose config` only |
+| S9 | `docker compose up` (P0-T5 done-when) | **Passed**: both containers healthy, `/health` 200 | **Go**; base images pinned to exact tags |
 
 ## S1. SQL Server 2025 vector search with EF Core 10
 
@@ -34,7 +34,7 @@ Results:
 - Ranking correct: `near` distance 0.0050, `far` 1.0000. The course 2 row with an identical vector to the query was excluded by the `CourseId` filter (isolation works at the query level).
 - A projection with `Select(new { ... })` does not read the `Embedding` column, so D8 (explicit projections) is enough to avoid loading 4 KB per row.
 - Round-trip: a stored vector reads back with length 1024 and the same values.
-- Inserting 5,000 vectors in batches of 1,000 took 0.7 s. An exact top-5 query over about 5,000 rows took **11.6 ms** on average (LocalDB, laptop). Exact search is fine at the planned scale; no vector index needed.
+- Inserting 5,000 vectors in batches of 1,000 took 0.7 s on LocalDB and 1.5 s on the container. An exact top-5 query over about 5,000 rows took **11.6 ms** on LocalDB and **21.2 ms** on the Docker container (SQL Server 2025 RTM-CU11, 17.0.5065.9), both on the same laptop. Exact search is fine at the planned scale; no vector index needed.
 - Edition reported `Express Edition (64-bit)`, so the `vector` type and `VECTOR_DISTANCE` work in Express. `MSSQL_PID=Express` in compose is fine.
 
 Findings for the plan:
@@ -127,15 +127,20 @@ A Georgian passage costs about **twice** the tokens of the English equivalent. A
 
 ## S9. Docker
 
-`docker compose config` validates the file (it correctly refuses to run without `MSSQL_SA_PASSWORD`). Docker Desktop 4.59.0 on this machine quits at startup with:
+First attempt: Docker Desktop 4.59.0 quit at startup because a stale socket file `%LOCALAPPDATA%\Docker\run\dockerInference` could not be removed. Fixed on the machine (WSL shutdown, file removed, restart).
 
-> listening on unix://...\Docker\run\dockerInference: remove ...\Docker\run\dockerInference: The file cannot be accessed by the system.
+Run on 2026-11-14 with `docker compose up --build -d`:
 
-A stale socket file in `%LOCALAPPDATA%\Docker\run` blocks startup. Usual fixes: quit Docker Desktop, run `wsl --shutdown`, delete that `run` folder's stale entry (or reboot), then start Docker Desktop again. After that, run the P0-T5 check:
+- `sqlserver` healthy (the `/opt/mssql-tools18/bin/sqlcmd` health check works in the 2025 image); `web` healthy.
+- `GET /health` and `GET /alive` return 200 `Healthy`; `/` serves the Georgian home page with `lang="ka"`.
+- S1 re-run against the container on port 14333 passed (see S1).
 
-```bash
-cp .env.example .env    # then set MSSQL_SA_PASSWORD
-docker compose up --build
-```
+Issues found and fixed:
 
-Expected: `sqlserver` and `web` both healthy, app at http://localhost:8080, `/health` returns 200. Also confirm that `/opt/mssql-tools18/bin/sqlcmd` exists in the 2025 image (used by the health check).
+- **Stale floating image tag.** `FROM mcr.microsoft.com/dotnet/sdk:10.0` used a cached two-month-old image with SDK 10.0.401, which fails `global.json` (10.0.403, roll forward on patch only). The Dockerfile now pins `sdk:10.0.403` and `aspnet:10.0.15`. When `global.json` changes, change the SDK tag with it.
+- **HTTPS redirect warning.** In the container (Development environment via the override file) there is no HTTPS port. Redirection is now enabled only when an HTTPS endpoint is configured (`HTTPS_PORTS` or an `https://` URL).
+
+Open, for later tasks:
+
+- DataProtection keys are stored inside the container and lost on rebuild, which will log users out after every deploy. Persist them to a volume in P2-T1 (when Identity cookies arrive) or P7-T1.
+- The local `.env` holds a generated SA password; it is git-ignored. Each machine creates its own from `.env.example`.

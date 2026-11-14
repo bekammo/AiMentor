@@ -19,8 +19,11 @@ if (!app.Environment.IsDevelopment())
 }
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 
-// TLS is terminated outside the container; only redirect when an HTTPS port is configured.
-if (!string.IsNullOrEmpty(app.Configuration["ASPNETCORE_HTTPS_PORTS"]) || app.Environment.IsDevelopment())
+// Redirect to HTTPS only when an HTTPS endpoint exists (launch profile "https" or HTTPS_PORTS).
+// The container listens on plain HTTP; TLS, if any, is terminated in front of it.
+var hasHttpsEndpoint = !string.IsNullOrEmpty(app.Configuration["HTTPS_PORTS"])
+    || (app.Configuration["URLS"] ?? string.Empty).Contains("https://", StringComparison.OrdinalIgnoreCase);
+if (hasHttpsEndpoint)
 {
     app.UseHttpsRedirection();
 }
